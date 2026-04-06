@@ -9,6 +9,7 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #define MAX_SEQ 100
+#define DEBOUNCE_MS 200000
 //Definindo pinos
 const int PIN_SOM  = 28;
 const int PIN_BUZZER = 2;
@@ -25,6 +26,11 @@ volatile bool btn_flag_Y = false;
 volatile bool btn_flag_B = false;
 volatile bool btn_flag_G = false;
 volatile bool btn_flag_R = false;
+volatile uint32_t last_time_Y = 0;
+volatile uint32_t last_time_B = 0;
+volatile uint32_t last_time_G = 0;
+volatile uint32_t last_time_R = 0;
+
 volatile bool perdeu = false;
 /*
 btn_flag = 1 ==> Yellow
@@ -39,21 +45,26 @@ btn_flag = 4 ==> Red
 //Função de IRQ
 void btn_callback(uint gpio, uint32_t events) {
     if (events == 0x4) { // fall edge
-        if(gpio==PIN_BTN_Y){
+        uint32_t now = time_us_32();
+
+        if (gpio == PIN_BTN_Y && (now - last_time_Y) > DEBOUNCE_MS) {
+            last_time_Y = now;
             btn_flag_Y = true;
         }
-        else if(gpio == PIN_BTN_B){
+        else if (gpio == PIN_BTN_B && (now - last_time_B) > DEBOUNCE_MS) {
+            last_time_B = now;
             btn_flag_B = true;
         }
-        else if(gpio == PIN_BTN_G){
+        else if (gpio == PIN_BTN_G && (now - last_time_G) > DEBOUNCE_MS) {
+            last_time_G = now;
             btn_flag_G = true;
         }
-        else if(gpio == PIN_BTN_R){
+        else if (gpio == PIN_BTN_R && (now - last_time_R) > DEBOUNCE_MS) {
+            last_time_R = now;
             btn_flag_R = true;
         }
-        }
-
     }
+}
 
 
 
@@ -90,9 +101,12 @@ int main() {
     gpio_init(Led_B);
     gpio_init(Led_G);
     gpio_init(Led_Y);
+    gpio_init(PIN_BUZZER);
     
 
     //Definindo direções
+    gpio_set_dir(PIN_BUZZER, GPIO_OUT);
+
     gpio_set_dir(Led_R, GPIO_OUT);
 
     gpio_set_dir(Led_B, GPIO_OUT);
@@ -137,8 +151,8 @@ int main() {
     /*
     int freqY = 1000; //hz
     int freqB = 6000;//hz
-    int freqG = 1000; //hz
-    int freqR = 6000;//hz
+    int freqG = 500; //hz
+    int freqR = 3000;//hz
     int time = 100000; //micro s
     */
 
@@ -182,14 +196,14 @@ int main() {
                         break;
                     case 3:
                         printf("Verde\n");
-                        playtone(PIN_BUZZER, 1000, 100000);
+                        playtone(PIN_BUZZER, 500, 100000);
                         gpio_put(Led_G, 1);
                         sleep_ms(500);
                         gpio_put(Led_G, 0);
                         break;
                     case 4:
                         printf("Vermelho\n");
-                        playtone(PIN_BUZZER, 6000, 100000);
+                        playtone(PIN_BUZZER, 3000, 100000);
                         gpio_put(Led_R, 1);
                         sleep_ms(500);
                         gpio_put(Led_R, 0);
@@ -206,7 +220,7 @@ int main() {
             if (alarm_button > 0){
                 cancel_alarm(alarm_button);
             }
-            
+
             sleep_ms(2000);
             m = 0;
             perdeu = false;
@@ -219,6 +233,8 @@ int main() {
                 if (nova_seq[i] != 1) {
                     perdeu = true;
                     flag_play = false;
+                    flag_show = false;
+                    flag_innit = false;
                 }
                 playtone(PIN_BUZZER, 1000, 100000);
                 btn_flag_Y = false;
@@ -226,11 +242,11 @@ int main() {
                 sleep_ms(500);
                 gpio_put(Led_Y, 0);
                 i +=1;
-                if (i >= m) {
+                if (i >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                else {
+                if (i < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
@@ -240,6 +256,8 @@ int main() {
                 if (nova_seq[i] != 2) {
                     perdeu = true;
                     flag_play = false;
+                    flag_show = false;
+                    flag_innit = false;
                 }
                 playtone(PIN_BUZZER, 6000, 100000);
                 btn_flag_B = false;
@@ -247,11 +265,11 @@ int main() {
                 sleep_ms(500);
                 gpio_put(Led_B, 0);
                 i +=1;
-                if (i >= m) {
+                if (i >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                else {
+                if (i < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
@@ -261,18 +279,20 @@ int main() {
                 if (nova_seq[i] != 3) {
                     perdeu = true;
                     flag_play = false;
+                    flag_show = false;
+                    flag_innit = false;
                 }
-                playtone(PIN_BUZZER, 1000, 100000);
+                playtone(PIN_BUZZER, 500, 100000);
                 btn_flag_G = false;
                 gpio_put(Led_G, 1);
                 sleep_ms(500);
                 gpio_put(Led_G, 0);
                 i +=1;
-                if (i >= m) {
+                if (i >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                else {
+                if (i < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
@@ -282,18 +302,20 @@ int main() {
                 if (nova_seq[i] != 4) {
                     perdeu = true;
                     flag_play = false;
+                    flag_show = false;
+                    flag_innit = false;
                 }
-                playtone(PIN_BUZZER, 6000, 100000);
+                playtone(PIN_BUZZER, 3000, 100000);
                 btn_flag_R = false;
                 gpio_put(Led_R, 1);
                 sleep_ms(500);
                 gpio_put(Led_R, 0);
                 i +=1;
-                if (i >= m) {
+                if (i >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                else {
+                if (i < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
