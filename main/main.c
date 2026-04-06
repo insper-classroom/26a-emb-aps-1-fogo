@@ -5,9 +5,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
-
+#define MAX_SEQ 100
 //Definindo pinos
 const int PIN_SOM  = 28;
 const int PIN_BUZZER = 2;
@@ -15,11 +16,16 @@ const int PIN_BTN_Y  = 3;
 const int PIN_BTN_B= 4;
 const int PIN_BTN_G  = 5;
 const int PIN_BTN_R = 6;
+const int Led_R = 7;
+const int Led_B = 8;
+const int Led_G = 9;
+const int Led_Y = 10;
 
-volatile int btn_flag_Y;
-volatile int btn_flag_B;
-volatile int btn_flag_G;
-volatile int btn_flag_R;
+volatile bool btn_flag_Y = false;
+volatile bool btn_flag_B = false;
+volatile bool btn_flag_G = false;
+volatile bool btn_flag_R = false;
+volatile bool perdeu = false;
 /*
 btn_flag = 1 ==> Yellow
 btn_flag = 2 ==> Blue
@@ -34,16 +40,16 @@ btn_flag = 4 ==> Red
 void btn_callback(uint gpio, uint32_t events) {
     if (events == 0x4) { // fall edge
         if(gpio==PIN_BTN_Y){
-            btn_flag_Y = 1;
+            btn_flag_Y = true;
         }
         else if(gpio == PIN_BTN_B){
-            btn_flag_B = 2;
+            btn_flag_B = true;
         }
         else if(gpio == PIN_BTN_G){
-            btn_flag_G = 3;
+            btn_flag_G = true;
         }
         else if(gpio == PIN_BTN_R){
-            btn_flag_R = 4;
+            btn_flag_R = true;
         }
         }
 
@@ -64,6 +70,11 @@ void playtone(int pino, int frequencia, int tempo){
             }   
 }
 
+int64_t time_callback(alarm_id_t id, void *user_data) {
+    perdeu = true;
+    return 0;
+}
+
 
 int main() {
     stdio_init_all();
@@ -75,9 +86,21 @@ int main() {
     gpio_init(PIN_BTN_B);
     gpio_init(PIN_BTN_G);
     gpio_init(PIN_BTN_R);
+    gpio_init(Led_R);
+    gpio_init(Led_B);
+    gpio_init(Led_G);
+    gpio_init(Led_Y);
     
 
     //Definindo direções
+    gpio_set_dir(Led_R, GPIO_OUT);
+
+    gpio_set_dir(Led_B, GPIO_OUT);
+
+    gpio_set_dir(Led_G, GPIO_OUT);
+
+    gpio_set_dir(Led_Y, GPIO_OUT);
+
     gpio_set_dir(PIN_BTN_Y, GPIO_IN);
     gpio_pull_up(PIN_BTN_Y);
 
@@ -118,34 +141,164 @@ int main() {
     int freqR = 6000;//hz
     int time = 100000; //micro s
     */
+
+    // variaveis
+    srand(time_us_32());
+    int nova_seq[MAX_SEQ];
+    int m = 0;
+    bool flag_show = false;
+    bool flag_innit = true;
+    bool flag_play = false;
+    int i = 0;
+    alarm_id_t alarm_button;
     
 
 
     while (true) {
-        if(btn_flag_Y==1){
-            printf("Clickou o amarelo\n");
-            //playtone(PIN_BUZZER, freqY, time);
-            btn_flag_Y = 0;
-            sleep_ms(200);
+        if (flag_innit) {
+            int num = rand() % 4 + 1;
+            nova_seq[m] = num;   // Simplesmente adiciona no final
+            m += 1;
+            flag_innit = false;
+            flag_show = true;
         }
-        if(btn_flag_B==1){
-            printf("Clickou o a\n");
-            //playtone(PIN_BUZZER, freqB, time);
-            btn_flag_B = 0;
-            sleep_ms(200);
+        if (flag_show) {
+            for (int i = 0; i < m; i ++) {
+                int num = nova_seq[i];
+                switch (num) {
+                    case 1:
+                        printf("Amarelo\n");
+                        playtone(PIN_BUZZER, 1000, 100000);
+                        gpio_put(Led_Y, 1);
+                        sleep_ms(500);
+                        gpio_put(Led_Y, 0);
+                        break;
+                    case 2:
+                        printf("Azul\n");
+                        playtone(PIN_BUZZER, 6000, 100000);
+                        gpio_put(Led_B, 1);
+                        sleep_ms(500);
+                        gpio_put(Led_B, 0);
+                        break;
+                    case 3:
+                        printf("Verde\n");
+                        playtone(PIN_BUZZER, 1000, 100000);
+                        gpio_put(Led_G, 1);
+                        sleep_ms(500);
+                        gpio_put(Led_G, 0);
+                        break;
+                    case 4:
+                        printf("Vermelho\n");
+                        playtone(PIN_BUZZER, 6000, 100000);
+                        gpio_put(Led_R, 1);
+                        sleep_ms(500);
+                        gpio_put(Led_R, 0);
+                        break;
+                }
+            }
+            flag_show = false;
+            alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+            i = 0;
+            flag_play = true;
         }
-        if(btn_flag_G==1){
-            printf("Clickou o amarelo\n");
-            //playtone(PIN_BUZZER, freqG, time);
-            btn_flag_G = 0;
-            sleep_ms(200);
+        if (perdeu) {
+            printf("Perdeu\n");
+            if (alarm_button > 0){
+                cancel_alarm(alarm_button);
+            }
+            
+            sleep_ms(2000);
+            m = 0;
+            perdeu = false;
+            flag_innit = true;
         }
-        if(btn_flag_R==1){
-            printf("Clickou o amarelo\n");
-            //playtone(PIN_BUZZER, freqR, time);
-            btn_flag_R = 0;
-            sleep_ms(200);
+        if (flag_play) {
+            if(btn_flag_Y){
+                printf("Clickou o amarelo\n");
+                cancel_alarm(alarm_button);
+                if (nova_seq[i] != 1) {
+                    perdeu = true;
+                    flag_play = false;
+                }
+                playtone(PIN_BUZZER, 1000, 100000);
+                btn_flag_Y = false;
+                gpio_put(Led_Y, 1);
+                sleep_ms(500);
+                gpio_put(Led_Y, 0);
+                i +=1;
+                if (i >= m) {
+                    flag_play = false;
+                    flag_innit = true;
+                }
+                else {
+                    alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+                }
+            }
+            if(btn_flag_B){
+                printf("Clickou o azul\n");
+                cancel_alarm(alarm_button);
+                if (nova_seq[i] != 2) {
+                    perdeu = true;
+                    flag_play = false;
+                }
+                playtone(PIN_BUZZER, 6000, 100000);
+                btn_flag_B = false;
+                gpio_put(Led_B, 1);
+                sleep_ms(500);
+                gpio_put(Led_B, 0);
+                i +=1;
+                if (i >= m) {
+                    flag_play = false;
+                    flag_innit = true;
+                }
+                else {
+                    alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+                }
+            }
+            if(btn_flag_G){
+                printf("Clickou o verde\n");
+                cancel_alarm(alarm_button);
+                if (nova_seq[i] != 3) {
+                    perdeu = true;
+                    flag_play = false;
+                }
+                playtone(PIN_BUZZER, 1000, 100000);
+                btn_flag_G = false;
+                gpio_put(Led_G, 1);
+                sleep_ms(500);
+                gpio_put(Led_G, 0);
+                i +=1;
+                if (i >= m) {
+                    flag_play = false;
+                    flag_innit = true;
+                }
+                else {
+                    alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+                }
+            }
+            if(btn_flag_R){
+                printf("Clickou o vermelho\n");
+                cancel_alarm(alarm_button);
+                if (nova_seq[i] != 4) {
+                    perdeu = true;
+                    flag_play = false;
+                }
+                playtone(PIN_BUZZER, 6000, 100000);
+                btn_flag_R = false;
+                gpio_put(Led_R, 1);
+                sleep_ms(500);
+                gpio_put(Led_R, 0);
+                i +=1;
+                if (i >= m) {
+                    flag_play = false;
+                    flag_innit = true;
+                }
+                else {
+                    alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+                }
+            }
         }
+        
     }
 }
 
