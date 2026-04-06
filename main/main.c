@@ -163,7 +163,7 @@ int main() {
     bool flag_show = false;
     bool flag_innit = true;
     bool flag_play = false;
-    int i = 0;
+    int p = 0;
     alarm_id_t alarm_button;
     
 
@@ -212,7 +212,7 @@ int main() {
             }
             flag_show = false;
             alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
-            i = 0;
+            p = 0;
             flag_play = true;
         }
         if (perdeu) {
@@ -230,7 +230,7 @@ int main() {
             if(btn_flag_Y){
                 printf("Clickou o amarelo\n");
                 cancel_alarm(alarm_button);
-                if (nova_seq[i] != 1) {
+                if (nova_seq[p] != 1) {
                     perdeu = true;
                     flag_play = false;
                     flag_show = false;
@@ -241,19 +241,19 @@ int main() {
                 gpio_put(Led_Y, 1);
                 sleep_ms(500);
                 gpio_put(Led_Y, 0);
-                i +=1;
-                if (i >= m && perdeu == false) {
+                p +=1;
+                if (p >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                if (i < m && perdeu == false) {
+                if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
             if(btn_flag_B){
                 printf("Clickou o azul\n");
                 cancel_alarm(alarm_button);
-                if (nova_seq[i] != 2) {
+                if (nova_seq[p] != 2) {
                     perdeu = true;
                     flag_play = false;
                     flag_show = false;
@@ -264,19 +264,19 @@ int main() {
                 gpio_put(Led_B, 1);
                 sleep_ms(500);
                 gpio_put(Led_B, 0);
-                i +=1;
-                if (i >= m && perdeu == false) {
+                p +=1;
+                if (p >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                if (i < m && perdeu == false) {
+                if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
             if(btn_flag_G){
                 printf("Clickou o verde\n");
                 cancel_alarm(alarm_button);
-                if (nova_seq[i] != 3) {
+                if (nova_seq[p] != 3) {
                     perdeu = true;
                     flag_play = false;
                     flag_show = false;
@@ -287,19 +287,19 @@ int main() {
                 gpio_put(Led_G, 1);
                 sleep_ms(500);
                 gpio_put(Led_G, 0);
-                i +=1;
-                if (i >= m && perdeu == false) {
+                p +=1;
+                if (p >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                if (i < m && perdeu == false) {
+                if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
             if(btn_flag_R){
                 printf("Clickou o vermelho\n");
                 cancel_alarm(alarm_button);
-                if (nova_seq[i] != 4) {
+                if (nova_seq[p] != 4) {
                     perdeu = true;
                     flag_play = false;
                     flag_show = false;
@@ -310,12 +310,12 @@ int main() {
                 gpio_put(Led_R, 1);
                 sleep_ms(500);
                 gpio_put(Led_R, 0);
-                i +=1;
-                if (i >= m && perdeu == false) {
+                p +=1;
+                if (p >= m && perdeu == false) {
                     flag_play = false;
                     flag_innit = true;
                 }
-                if (i < m && perdeu == false) {
+                if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
