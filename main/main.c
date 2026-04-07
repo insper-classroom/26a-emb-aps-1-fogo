@@ -8,6 +8,12 @@
 #include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "hardware/irq.h"  // interrupts
+#include "hardware/pwm.h"  // pwm 
+#include "hardware/sync.h" // wait for interrupt 
+#include "hardware/clocks.h" // redefined set_sys_clock_khz() 
+#include "game_over.h"
+#include "game_start.h"
 #define MAX_SEQ 100
 #define DEBOUNCE_MS 200000
 //Definindo pinos
@@ -26,6 +32,10 @@ volatile bool btn_flag_Y = false;
 volatile bool btn_flag_B = false;
 volatile bool btn_flag_G = false;
 volatile bool btn_flag_R = false;
+volatile int wav_position_game_over = 0;
+volatile bool game_over = false;
+volatile int wav_position_game_start = 0;
+volatile bool game_start = false;
 volatile uint32_t last_time_Y = 0;
 volatile uint32_t last_time_B = 0;
 volatile uint32_t last_time_G = 0;
@@ -43,6 +53,33 @@ btn_flag = 4 ==> Red
 
 //Funções callback
 //Função de IRQ
+void pwm_interrupt_handler() {
+    pwm_clear_irq(pwm_gpio_to_slice_num(PIN_SOM));    
+    if (game_start){
+        if (wav_position_game_start < (WAV_DATA_GAME_START_LENGTH<<3) - 1) { 
+            // set pwm level 
+            // allow the pwm value to repeat for 8 cycles this is >>3 
+            pwm_set_gpio_level(PIN_SOM, WAV_DATA_GAME_START[wav_position_game_start>>3]);  
+            wav_position_game_start++;
+        }
+        else {
+            game_start = false;
+            wav_position_game_start = 0;
+        }
+    } else if (game_over){
+        if (wav_position_game_over < (WAV_DATA_GAME_OVER_LENGTH<<3) - 1) { 
+            // set pwm level 
+            // allow the pwm value to repeat for 8 cycles this is >>3 
+            pwm_set_gpio_level(PIN_SOM, WAV_DATA_GAME_OVER[wav_position_game_over>>3]);  
+            wav_position_game_over++;
+        }
+        else {
+            game_over = false;
+            wav_position_game_over = 0;
+        }
+    }
+}
+
 void btn_callback(uint gpio, uint32_t events) {
     if (events == 0x4) { // fall edge
         uint32_t now = time_us_32();
@@ -156,6 +193,22 @@ int main() {
     int time = 100000; //micro s
     */
 
+    // iniciando audio pwm
+    set_sys_clock_khz(176000, true); 
+    gpio_set_function(PIN_SOM, GPIO_FUNC_PWM);
+    int audio_pin_slice = pwm_gpio_to_slice_num(PIN_SOM);
+    pwm_clear_irq(audio_pin_slice);
+    pwm_set_irq_enabled(audio_pin_slice, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, pwm_interrupt_handler); 
+    irq_set_enabled(PWM_IRQ_WRAP, true);
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 8.0f); 
+    pwm_config_set_wrap(&config, 255); 
+    pwm_init(audio_pin_slice, &config, true);
+
+    pwm_set_gpio_level(PIN_SOM, 0);
+
+
     // variaveis
     srand(time_us_32());
     int nova_seq[MAX_SEQ];
@@ -163,17 +216,26 @@ int main() {
     bool flag_show = false;
     bool flag_innit = true;
     bool flag_play = false;
+    bool flag_seq =false;
     int p = 0;
     alarm_id_t alarm_button;
     
 
 
     while (true) {
-        if (flag_innit) {
+        if (flag_innit){
+            printf("Iniciou jogo\n");
+            game_start = true;
+            flag_innit = false;
+            flag_seq = true;
+            m = 0;
+            sleep_ms(2000);
+        }
+        if (flag_seq) {
             int num = rand() % 4 + 1;
             nova_seq[m] = num;   // Simplesmente adiciona no final
             m += 1;
-            flag_innit = false;
+            flag_seq = false;
             flag_show = true;
         }
         if (flag_show) {
@@ -220,7 +282,7 @@ int main() {
             if (alarm_button > 0){
                 cancel_alarm(alarm_button);
             }
-
+            game_over = true;
             sleep_ms(2000);
             m = 0;
             perdeu = false;
@@ -235,6 +297,7 @@ int main() {
                     flag_play = false;
                     flag_show = false;
                     flag_innit = false;
+                    flag_seq = false;
                 }
                 playtone(PIN_BUZZER, 1000, 100000);
                 btn_flag_Y = false;
@@ -244,7 +307,7 @@ int main() {
                 p +=1;
                 if (p >= m && perdeu == false) {
                     flag_play = false;
-                    flag_innit = true;
+                    flag_seq = true;
                 }
                 if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
@@ -258,6 +321,7 @@ int main() {
                     flag_play = false;
                     flag_show = false;
                     flag_innit = false;
+                    flag_seq = false;
                 }
                 playtone(PIN_BUZZER, 6000, 100000);
                 btn_flag_B = false;
@@ -267,7 +331,7 @@ int main() {
                 p +=1;
                 if (p >= m && perdeu == false) {
                     flag_play = false;
-                    flag_innit = true;
+                    flag_seq = true;
                 }
                 if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
@@ -281,6 +345,7 @@ int main() {
                     flag_play = false;
                     flag_show = false;
                     flag_innit = false;
+                    flag_seq = false;
                 }
                 playtone(PIN_BUZZER, 500, 100000);
                 btn_flag_G = false;
@@ -290,7 +355,7 @@ int main() {
                 p +=1;
                 if (p >= m && perdeu == false) {
                     flag_play = false;
-                    flag_innit = true;
+                    flag_seq = true;
                 }
                 if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
@@ -304,6 +369,7 @@ int main() {
                     flag_play = false;
                     flag_show = false;
                     flag_innit = false;
+                    flag_seq = false;
                 }
                 playtone(PIN_BUZZER, 3000, 100000);
                 btn_flag_R = false;
@@ -313,7 +379,7 @@ int main() {
                 p +=1;
                 if (p >= m && perdeu == false) {
                     flag_play = false;
-                    flag_innit = true;
+                    flag_seq = true;
                 }
                 if (p < m && perdeu == false) {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
