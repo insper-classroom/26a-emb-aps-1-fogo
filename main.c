@@ -100,12 +100,12 @@ void drawLed(int ledState, int led) {
         gfx_drawBitmap(drawX, drawY, image_choice_bullet_on_bits, buttonW, buttonH, buttonColorOff);
 }
 void drawNumero(int numero, int state){
+    int numeroTextSize=5;
     if (state==1){
         gfx_clear(); // limpa a tela toda para mostrar apenas o numero
         char numeroStr[12];
         int textLen = snprintf(numeroStr, sizeof(numeroStr), "%d", numero);
 
-        const int numeroTextSize = 5;
         const int charW = 6;
         const int charH = 8;
         int drawX = (width - (textLen * charW * numeroTextSize)) / 2;
@@ -121,7 +121,7 @@ void drawNumero(int numero, int state){
     }
     else if (state==2){ //Perdeu o jogo
         gfx_clear(); // limpa a tela toda para mostrar apenas a mensagem de derrota
-        int numeroTextSize = 4;
+        numeroTextSize = 4;
         gfx_setTextSize(numeroTextSize); // aumenta o tamanho para ficar bem visivel
         gfx_drawText(
         5,                                       // Posição horizontal do texto
@@ -133,7 +133,7 @@ void drawNumero(int numero, int state){
     }
     else{//state == 0, ou seja depois que mostrou o número
         gfx_clear(); // restaura a interface principal
-        int numeroTextSize = 5;
+        numeroTextSize = 5;
         gfx_setTextSize(numeroTextSize);
         gfx_drawText(
             5,
@@ -396,7 +396,7 @@ int main() {
             f_btn = 0;
             x=0;
             gfx_clear(); // restaura a interface principal
-            int numeroTextSize = 2;
+            numeroTextSize = 2;
             gfx_setTextSize(numeroTextSize);
             gfx_drawText(
                 5,
@@ -525,7 +525,7 @@ int main() {
             btn_flag_Y = false;
         }
         if (flag_play) {
-            if(btn_flag_Y && flag_play){
+            if(btn_flag_Y){
                 printf("Clickou o amarelo\n");
                 cancel_alarm(alarm_button);
                 if (nova_seq[p] != 1) {
@@ -559,7 +559,7 @@ int main() {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
-            else if(btn_flag_B && flag_play){
+            else if(btn_flag_B){
                 printf("Clickou o azul\n");
                 cancel_alarm(alarm_button);
                 if (nova_seq[p] != 2) {
@@ -591,7 +591,7 @@ int main() {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
-            else if(btn_flag_G && flag_play){
+            else if(btn_flag_G){
                 printf("Clickou o verde\n");
                 cancel_alarm(alarm_button);
                 if (nova_seq[p] != 3) {
@@ -623,7 +623,7 @@ int main() {
                     alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
                 }
             }
-            else if(btn_flag_R && flag_play){
+            else if(btn_flag_R){
                 printf("Clickou o vermelho\n");
                 cancel_alarm(alarm_button);
                 if (nova_seq[p] != 4) {
