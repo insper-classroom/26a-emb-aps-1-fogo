@@ -24,7 +24,7 @@
 // ---------------------------------------------------------   
 
 #define MAX_SEQ 100
-#define DEBOUNCE_MS 175000
+#define DEBOUNCE_MS 300000
 //Definindo pinos
 const int PIN_SOM  = 28;
 const int PIN_BUZZER = 2;
@@ -65,7 +65,7 @@ const int width = 320;
 const int height = 240; 
 
 // Posição da imagem na tela
-const int  led1ImgPosX = (width - 263);
+const int  led1ImgPosX = 100;
 const int  led1ImgPosY = (height - 82);
 
 const int  button1ImgPosX = (width - 263);
@@ -143,7 +143,7 @@ void drawNumero(int numero, int state){
         gfx_setTextSize(2);
         gfx_drawText(
             5,
-            40,
+            60,
             "Clique para iniciar o jogo"
         );
         drawLed(0,1);
@@ -228,6 +228,7 @@ int64_t time_callback(alarm_id_t id, void *user_data) {
 
 
 int main() {
+    set_sys_clock_khz(176000, true);
     stdio_init_all();
 
     //LCD ------------------------------------------------------------------------------------------
@@ -253,7 +254,7 @@ int main() {
     gfx_setTextSize(2);
     gfx_drawText(
         5,
-        40,
+        60,
         "Clique para iniciar o jogo"
     );
     drawLed(0,1);
@@ -316,17 +317,17 @@ int main() {
 
     ////Definindo IRQ a partir do botão Y
     gpio_set_irq_enabled_with_callback(
-      PIN_BTN_Y,GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &btn_callback);
+      PIN_BTN_Y, GPIO_IRQ_EDGE_FALL, true, &btn_callback);
 
     //Definindo IRQ a partir do botão B
     // callback BOTÃO G(nao usar _with_callback na segunda chamada de Interrupção, o callback e o nome dessa função callback já foi registrado anteriormente)
-    gpio_set_irq_enabled(PIN_BTN_B,GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_BTN_B, GPIO_IRQ_EDGE_FALL, true);
 
     //Definindo IRQ a partir do botão G
-    gpio_set_irq_enabled(PIN_BTN_G,GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_BTN_G, GPIO_IRQ_EDGE_FALL, true);
 
     //Definindo IRQ a partir do botão R
-    gpio_set_irq_enabled(PIN_BTN_R,GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_BTN_R, GPIO_IRQ_EDGE_FALL, true);
 
         
 
@@ -344,7 +345,6 @@ int main() {
     */
 
     // iniciando audio pwm
-    set_sys_clock_khz(176000, true); 
     gpio_set_function(PIN_SOM, GPIO_FUNC_PWM);
     int audio_pin_slice = pwm_gpio_to_slice_num(PIN_SOM);
     pwm_clear_irq(audio_pin_slice);
@@ -442,13 +442,20 @@ int main() {
             nova_seq[m] = num;   // Simplesmente adiciona no final
             m+=1;
             flag_seq = false;
-            flag_show = true;
+            sleep_ms(1000);
             btn_flag_B = false;
             btn_flag_G = false;
             btn_flag_R = false;
             btn_flag_Y = false;
+            flag_show = true;
         }
         if (flag_show) {
+            // Desabilita IRQs dos botões durante a exibição
+            gpio_set_irq_enabled(PIN_BTN_Y,  GPIO_IRQ_EDGE_FALL, false);
+            gpio_set_irq_enabled(PIN_BTN_B,  GPIO_IRQ_EDGE_FALL, false);
+            gpio_set_irq_enabled(PIN_BTN_G, GPIO_IRQ_EDGE_FALL, false);
+            gpio_set_irq_enabled(PIN_BTN_R,  GPIO_IRQ_EDGE_FALL, false);
+
             for (int i = 0; i < m; i ++) {
                 int num = nova_seq[i];
                 switch (num) {
@@ -482,14 +489,24 @@ int main() {
                         break;
                 }
             }
-            flag_show = false;
-            alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
-            p = 0;
-            flag_play = true;
+            btn_flag_Y = false;
             btn_flag_B = false;
             btn_flag_G = false;
             btn_flag_R = false;
-            btn_flag_Y = false;
+
+            // Reabilita IRQs
+            gpio_set_irq_enabled(PIN_BTN_Y, GPIO_IRQ_EDGE_FALL, true);
+            gpio_set_irq_enabled(PIN_BTN_B,  GPIO_IRQ_EDGE_FALL, true);
+            gpio_set_irq_enabled(PIN_BTN_G,  GPIO_IRQ_EDGE_FALL, true);
+            gpio_set_irq_enabled(PIN_BTN_R, GPIO_IRQ_EDGE_FALL, true);
+
+            flag_show = false;
+            sleep_ms(200);
+            alarm_button = add_alarm_in_ms(5000, time_callback, NULL, false);
+            p = 0;
+            flag_play = true;
+
+
         }
         if (perdeu) {
             printf("Perdeu\n");
